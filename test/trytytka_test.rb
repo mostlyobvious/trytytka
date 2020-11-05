@@ -10,13 +10,14 @@ class TrytytkaTest < Minitest::Test
     end
 
     def call(parent_event_id, indent = 0)
-      return unless event = find_child(parent_event_id)
-      @output << " " * indent + event.event_id + "\n"
-      call(event.event_id, indent + 2)
+      find_children(parent_event_id).each do |child|
+        @output << " " * indent + child.event_id + "\n"
+        call(child.event_id, indent + 2)
+      end
     end
 
-    def find_child(parent_event_id)
-      @collected_events.find { |event| event.causation_id == parent_event_id }
+    def find_children(parent_event_id)
+      @collected_events.select { |event| event.causation_id == parent_event_id }
     end
 
     def output
@@ -24,7 +25,7 @@ class TrytytkaTest < Minitest::Test
     end
   end
 
-  def test_it
+  def test_this
     collected_events = [
       Event.new("a", nil),
       Event.new("b", "a"),
@@ -41,6 +42,26 @@ class TrytytkaTest < Minitest::Test
         c
           d
             e
+    EOM
+  end
+
+  def test_that
+    collected_events = [
+      Event.new("a", nil),
+      Event.new("b", "a"),
+      Event.new("c", "b"),
+      Event.new("d", "c"),
+      Event.new("e", "a"),
+    ]
+
+    magic = Magic.new(collected_events)
+    magic.call(nil)
+    assert_equal magic.output, <<~EOM
+    a
+      b
+        c
+          d
+      e
     EOM
   end
 end
